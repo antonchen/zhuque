@@ -29,6 +29,7 @@ import {
   IconMenuFold,
   IconMenuUnfold,
 } from '@arco-design/web-react/icon';
+import Editor from '@monaco-editor/react';
 import axios from 'axios';
 
 interface ScriptFile {
@@ -433,6 +434,30 @@ const Scripts: React.FC = () => {
     return fileName.endsWith('.sh') || fileName.endsWith('.py') || fileName.endsWith('.js');
   };
 
+  const getLanguage = (fileName: string): string => {
+    if (fileName.endsWith('.py')) return 'python';
+    if (fileName.endsWith('.js')) return 'javascript';
+    if (fileName.endsWith('.ts')) return 'typescript';
+    if (fileName.endsWith('.jsx')) return 'javascript';
+    if (fileName.endsWith('.tsx')) return 'typescript';
+    if (fileName.endsWith('.json')) return 'json';
+    if (fileName.endsWith('.html')) return 'html';
+    if (fileName.endsWith('.css')) return 'css';
+    if (fileName.endsWith('.sh') || fileName.endsWith('.bash')) return 'shell';
+    if (fileName.endsWith('.md')) return 'markdown';
+    if (fileName.endsWith('.yaml') || fileName.endsWith('.yml')) return 'yaml';
+    if (fileName.endsWith('.xml')) return 'xml';
+    if (fileName.endsWith('.sql')) return 'sql';
+    if (fileName.endsWith('.go')) return 'go';
+    if (fileName.endsWith('.rs')) return 'rust';
+    if (fileName.endsWith('.java')) return 'java';
+    if (fileName.endsWith('.c') || fileName.endsWith('.h')) return 'c';
+    if (fileName.endsWith('.cpp') || fileName.endsWith('.hpp')) return 'cpp';
+    if (fileName.endsWith('.php')) return 'php';
+    if (fileName.endsWith('.rb')) return 'ruby';
+    return 'plaintext';
+  };
+
   const renderFileList = () => {
     return (
       <div style={{ padding: '12px' }}>
@@ -793,18 +818,20 @@ const Scripts: React.FC = () => {
             // 调试模式：左右分屏
             <div style={{ display: 'flex', height: '100%' }}>
               <div style={{ flex: 1, borderRight: '1px solid var(--color-border)' }}>
-                <Input.TextArea
+                <Editor
+                  height="100%"
+                  language={getLanguage(selectedFile.name)}
                   value={fileContent}
                   onChange={(value) => {
-                    setFileContent(value);
+                    setFileContent(value || '');
                     setHasUnsavedChanges(true);
                   }}
-                  style={{
-                    height: '100%',
-                    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                    fontSize: '14px',
-                    border: 'none',
-                    resize: 'none',
+                  theme="vs-dark"
+                  options={{
+                    fontSize: 14,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
                   }}
                 />
               </div>
@@ -826,23 +853,23 @@ const Scripts: React.FC = () => {
             </div>
           ) : (
             // 查看/编辑模式
-            <Input.TextArea
+            <Editor
+              height="100%"
+              language={getLanguage(selectedFile.name)}
               value={fileContent}
               onChange={(value) => {
                 if (isEditing) {
-                  setFileContent(value);
+                  setFileContent(value || '');
                   setHasUnsavedChanges(true);
                 }
               }}
-              readOnly={!isEditing}
-              style={{
-                height: '100%',
-                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                fontSize: '14px',
-                border: 'none',
-                resize: 'none',
-                backgroundColor: isEditing ? 'transparent' : '#f7f8fa',
-                cursor: isEditing ? 'text' : 'default',
+              theme="vs-dark"
+              options={{
+                readOnly: !isEditing,
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
               }}
             />
           )
