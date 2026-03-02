@@ -91,6 +91,7 @@ const Dashboard: React.FC = () => {
     {
       title: '执行时间',
       dataIndex: 'created_at',
+      render: (time: string) => new Date(time).toLocaleString('zh-CN'),
     },
   ];
 
