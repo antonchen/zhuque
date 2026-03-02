@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub async fn auth_middleware(
     State(auth_service): State<Arc<AuthService>>,
     headers: HeaderMap,
-    mut request: Request,
+    request: Request,
     next: Next,
 ) -> Response {
     // 先尝试从 Authorization header 获取 token

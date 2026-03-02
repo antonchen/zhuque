@@ -1,5 +1,5 @@
 use crate::api::AppState;
-use crate::models::{LoginRequest, TotpVerifyRequest, TotpEnableRequest};
+use crate::models::{LoginRequest, TotpVerifyRequest};
 use axum::{
     extract::State,
     http::StatusCode,

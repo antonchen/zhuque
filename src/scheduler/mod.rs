@@ -92,7 +92,7 @@ impl Scheduler {
             let log_service = self.log_service.clone();
             let executor = self.executor.clone();
             let task_clone = task.clone();
-            let cron_expr_clone = cron_expr.clone();
+            let _cron_expr_clone = cron_expr.clone();
 
             let job = Job::new_async_tz(cron_expr.as_str(), chrono::Local, move |_uuid, _l| {
                 let task = task_clone.clone();
@@ -106,7 +106,7 @@ impl Scheduler {
                     let start_time = chrono::Utc::now();
 
                     // 执行任务
-                    let (execution_id, output, success) = match executor.execute(&task).await {
+                    let (_execution_id, output, success) = match executor.execute(&task).await {
                         Ok(result) => result,
                         Err(e) => {
                             error!("Task execution error: {}", e);
@@ -171,7 +171,7 @@ impl Scheduler {
         tokio::spawn(async move {
             let start_time = chrono::Utc::now();
 
-            let (execution_id, output, success) = match executor.execute(&task).await {
+            let (_execution_id, output, success) = match executor.execute(&task).await {
                 Ok(result) => result,
                 Err(e) => {
                     error!("Task execution error: {}", e);

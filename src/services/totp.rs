@@ -8,7 +8,7 @@ use qrcode::QrCode;
 use rand::Rng;
 use std::sync::Arc;
 use totp_rs::{Algorithm, Secret, TOTP};
-use tracing::{error, info};
+use tracing::info;
 
 const SESSION_TOKEN_EXPIRATION: i64 = 300; // 5分钟
 
@@ -57,7 +57,7 @@ impl TotpService {
         let secret = base32_encode(Alphabet::RFC4648 { padding: false }, &secret_bytes);
 
         // 生成TOTP
-        let totp = TOTP::new(
+        let _totp = TOTP::new(
             Algorithm::SHA1,
             6,
             1,

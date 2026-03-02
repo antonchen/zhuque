@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
                         for task in startup_tasks {
                             info!("Executing startup task: {}", task.name);
                             match executor_clone.execute(&task).await {
-                                Ok((execution_id, output, success)) => {
+                                Ok((_execution_id, output, success)) => {
                                     let status = if success { "success" } else { "failed" };
                                     info!("Startup task {} completed with status: {}", task.name, status);
 

@@ -1,4 +1,4 @@
-use crate::models::{Task, MirrorConfig};
+use crate::models::Task;
 use crate::services::{EnvService, ConfigService};
 use crate::utils::python_detector::PYTHON_CMD;
 use anyhow::{anyhow, Result};
