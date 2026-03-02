@@ -23,6 +23,9 @@ data/
 *.md
 docs/
 
+# 截图
+screenshot/
+
 # 其他
 .env
 .DS_Store

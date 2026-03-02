@@ -11,6 +11,16 @@
 
 </div>
 
+## 📸 界面预览
+
+<div align="center">
+
+![界面截图1](screenshot/1.png)
+
+![界面截图2](screenshot/2.png)
+
+</div>
+
 ## ✨ 特性
 
 - 🚀 **高性能** - 基于 Rust + Axum 构建，内存占用低，响应速度快
