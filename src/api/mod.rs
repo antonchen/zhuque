@@ -13,7 +13,7 @@ pub mod terminal;
 
 use crate::middleware::{auth_middleware, webhook_auth_middleware};
 use crate::scheduler::Scheduler;
-use crate::services::{AuthService, ConfigService, DependenceService, EnvService, LogService, ScriptService, SubscriptionService, TaskService, TaskGroupService, TerminalService};
+use crate::services::{AuthService, ConfigService, DependenceService, EnvService, LogService, ScriptService, SubscriptionService, TaskService, TaskGroupService, TerminalService, TotpService};
 use axum::{
     http::{StatusCode, Uri},
     middleware,
@@ -39,6 +39,7 @@ pub struct AppState {
     pub config_service: Arc<ConfigService>,
     pub auth_service: Arc<AuthService>,
     pub terminal_service: Arc<TerminalService>,
+    pub totp_service: Arc<TotpService>,
     pub scheduler: Arc<Scheduler>,
     pub db_pool: Arc<RwLock<SqlitePool>>,
 }
@@ -241,6 +242,12 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/system/webhook-config", get(system::get_webhook_config))
         // 终端
         .route("/api/terminal/connect", get(terminal::connect_terminal))
+        // TOTP管理
+        .route("/api/auth/totp/status", get(auth::get_totp_status))
+        .route("/api/auth/totp/setup", post(auth::setup_totp))
+        .route("/api/auth/totp/enable", post(auth::enable_totp))
+        .route("/api/auth/totp/disable", post(auth::disable_totp))
+        .route("/api/auth/totp/regenerate-backup-codes", post(auth::regenerate_backup_codes))
         .layer(middleware::from_fn_with_state(
             state.auth_service.clone(),
             auth_middleware,
@@ -249,6 +256,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // 公开路由
     let app = Router::new()
         .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/totp/verify", post(auth::verify_totp))
         .merge(webhook_routes)
         .merge(protected_routes)
         .with_state(state);

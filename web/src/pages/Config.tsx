@@ -15,6 +15,7 @@ import {
 } from '@arco-design/web-react';
 import { IconSave, IconDownload, IconUpload } from '@arco-design/web-react/icon';
 import axios from 'axios';
+import TotpSettings from '@/components/TotpSettings';
 
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
@@ -618,6 +619,12 @@ const Config: React.FC = () => {
                   )}
                 </Space>
               </Spin>
+            </div>
+          </TabPane>
+
+          <TabPane key="security" title="安全设置">
+            <div style={{ padding: '16px 24px' }}>
+              <TotpSettings />
             </div>
           </TabPane>
         </Tabs>

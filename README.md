@@ -17,7 +17,7 @@
 - 📅 **定时任务** - 支持 Cron 表达式，灵活配置任务执行时间
 - 📝 **脚本管理** - 在线编辑、上传、执行 Python/Node.js/Shell 脚本
 - 📦 **依赖管理** - 统一管理 Python、Node.js、Linux 系统依赖
-- 🔐 **安全认证** - JWT Token 认证，保护 API 接口
+- 🔐 **安全认证** - JWT Token 认证 + TOTP 二次验证，保护 API 接口
 - 📊 **日志查看** - 实时查看任务执行日志，支持搜索和过滤
 - 💻 **Web 终端** - 基于 WebSocket 的在线终端，支持实时交互和窗口调整
 - 🔄 **订阅管理** - 支持 Git 仓库订阅，定时拉取更新并执行脚本
@@ -223,6 +223,8 @@ xuanwu/
 - ✅ 镜像源配置（pip/npm）
 - ✅ 数据备份与恢复
 - ✅ JWT 认证系统
+- ✅ TOTP 二次验证（支持 Google Authenticator 等验证器）
+- ✅ 备用恢复码
 
 ## 🔧 配置说明
 
@@ -297,7 +299,9 @@ TZ=Asia/Shanghai
 详细的 API 文档请参考 [ARCHITECTURE.md](ARCHITECTURE.md)
 
 主要接口：
-- `/api/auth/login` - 用户登录
+- `/api/auth/login` - 用户登录（第一步）
+- `/api/auth/totp/verify` - TOTP 验证（第二步）
+- `/api/auth/totp/*` - TOTP 管理接口
 - `/api/tasks` - 任务管理
 - `/api/scripts` - 脚本管理
 - `/api/env` - 环境变量管理

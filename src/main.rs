@@ -9,7 +9,7 @@ use anyhow::Result;
 use api::AppState;
 use models::db::init_db;
 use scheduler::Scheduler;
-use services::{AuthService, ConfigService, DependenceService, EnvService, Executor, LogService, ScriptService, SubscriptionService, TaskService, TaskGroupService, TerminalService};
+use services::{AuthService, ConfigService, DependenceService, EnvService, Executor, LogService, ScriptService, SubscriptionService, TaskService, TaskGroupService, TerminalService, TotpService};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
@@ -51,8 +51,11 @@ async fn main() -> Result<()> {
     let task_group_service = Arc::new(TaskGroupService::new(shared_pool.clone()));
     let subscription_service = Arc::new(SubscriptionService::new(shared_pool.clone(), scripts_dir.clone()));
     let config_service = Arc::new(ConfigService::new(shared_pool.clone()));
-    let auth_service = Arc::new(AuthService::new()?);
+    let mut auth_service = AuthService::new()?;
+    auth_service.set_config_service(config_service.clone());
+    let auth_service = Arc::new(auth_service);
     let terminal_service = Arc::new(TerminalService::new(scripts_dir.clone()));
+    let totp_service = Arc::new(TotpService::new(config_service.clone()));
     let executor = Arc::new(Executor::new(env_service.clone(), config_service.clone()));
 
     script_service.init().await?;
@@ -107,6 +110,7 @@ async fn main() -> Result<()> {
         config_service,
         auth_service,
         terminal_service,
+        totp_service,
         scheduler,
         db_pool: shared_pool,
     });

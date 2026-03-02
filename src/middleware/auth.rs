@@ -47,15 +47,30 @@ pub async fn auth_middleware(
     };
 
     // 验证 token
-    if let Err(_) = auth_service.verify_token(token) {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(json!({
-                "error": "Unauthorized",
-                "message": "Invalid or expired token"
-            })),
-        )
-            .into_response();
+    match auth_service.verify_token(token) {
+        Ok(claims) => {
+            // 拒绝session token访问受保护资源
+            if claims.sub.starts_with("session:") {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!({
+                        "error": "Unauthorized",
+                        "message": "Session token cannot be used to access protected resources"
+                    })),
+                )
+                    .into_response();
+            }
+        }
+        Err(_) => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({
+                    "error": "Unauthorized",
+                    "message": "Invalid or expired token"
+                })),
+            )
+                .into_response();
+        }
     }
 
     next.run(request).await
