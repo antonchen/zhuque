@@ -56,26 +56,32 @@ pub async fn create_backup(
 
     info!("Creating backup from: {}", data_dir);
 
-    // 在内存中创建 tar.gz
-    let mut tar_gz_data = Vec::new();
-    {
-        let encoder = GzEncoder::new(&mut tar_gz_data, Compression::default());
-        let mut tar = Builder::new(encoder);
+    // 在后台线程中执行阻塞的 tar 操作，避免阻塞 tokio 运行时
+    let tar_gz_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, std::io::Error> {
+        let mut tar_gz_data = Vec::new();
+        {
+            let encoder = GzEncoder::new(&mut tar_gz_data, Compression::default());
+            let mut tar = Builder::new(encoder);
 
-        // 递归添加 data 目录下的所有文件
-        let data_path = std::path::Path::new(&data_dir);
-        if data_path.exists() {
-            tar.append_dir_all("data", &data_dir).map_err(|e| {
-                error!("Failed to add directory to tar: {}", e);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
+            // 递归添加 data 目录下的所有文件
+            let data_path = std::path::Path::new(&data_dir);
+            if data_path.exists() {
+                tar.append_dir_all("data", &data_dir)?;
+            }
+
+            tar.finish()?;
         }
-
-        tar.finish().map_err(|e| {
-            error!("Failed to finish tar: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    }
+        Ok(tar_gz_data)
+    })
+    .await
+    .map_err(|e| {
+        error!("Task join error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .map_err(|e| {
+        error!("Failed to create backup: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     info!("Backup created successfully: {} bytes", tar_gz_data.len());
 
