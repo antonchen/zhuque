@@ -138,7 +138,7 @@ impl Scheduler {
 
                     // 保存日志
                     let status = if success { "success" } else { "failed" };
-                    if let Err(e) = log_service.create(task.id, output, status.to_string()).await {
+                    if let Err(e) = log_service.create(task.id, output, status.to_string(), Some(duration)).await {
                         error!("Failed to save log: {}", e);
                     }
                 })
@@ -193,7 +193,7 @@ impl Scheduler {
             }
 
             let status = if success { "success" } else { "failed" };
-            if let Err(e) = log_service.create(task.id, output, status.to_string()).await {
+            if let Err(e) = log_service.create(task.id, output, status.to_string(), Some(duration)).await {
                 error!("Failed to save log: {}", e);
             }
         });

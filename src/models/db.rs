@@ -71,6 +71,7 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
             task_id INTEGER NOT NULL,
             output TEXT NOT NULL,
             status TEXT NOT NULL,
+            duration INTEGER,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
         )
@@ -197,6 +198,12 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
 
     // 数据库迁移：添加 working_dir 字段到 tasks 表
     sqlx::query("ALTER TABLE tasks ADD COLUMN working_dir TEXT")
+        .execute(&pool)
+        .await
+        .ok(); // 忽略错误，字段可能已存在
+
+    // 数据库迁移：添加 duration 字段到 logs 表
+    sqlx::query("ALTER TABLE logs ADD COLUMN duration INTEGER")
         .execute(&pool)
         .await
         .ok(); // 忽略错误，字段可能已存在

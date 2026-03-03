@@ -53,7 +53,10 @@ const Tasks: React.FC = () => {
   const [logContent, setLogContent] = useState('');
   const [logLoading, setLogLoading] = useState(false);
   const [isLiveLog, setIsLiveLog] = useState(false);
+  const [currentViewTask, setCurrentViewTask] = useState<Task | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const timerRef = useRef<number | null>(null);
 
   // Webhook相关状态
   const [webhookVisible, setWebhookVisible] = useState(false);
@@ -82,6 +85,10 @@ const Tasks: React.FC = () => {
       // 清理SSE连接
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
+      }
+      // 清理计时器
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
     };
   }, []);
@@ -288,6 +295,13 @@ const Tasks: React.FC = () => {
     setLogVisible(true);
     setLogContent('');
     setLogLoading(true);
+    setCurrentViewTask(task);
+
+    // 清除之前的计时器
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
 
     // 先刷新运行状态，确保是最新的
     try {
@@ -314,6 +328,14 @@ const Tasks: React.FC = () => {
           console.log('当前执行记录:', currentExecution);
 
           if (currentExecution) {
+            // 启动实时耗时计时器 - 使用执行记录的开始时间
+            const startTimestamp = new Date(currentExecution.started_at).getTime();
+            setElapsedTime(Date.now() - startTimestamp);
+
+            timerRef.current = setInterval(() => {
+              setElapsedTime(Date.now() - startTimestamp);
+            }, 100);
+
             // 连接SSE获取实时日志
             const token = localStorage.getItem('token');
             const url = `/api/executions/${currentExecution.execution_id}/logs${token ? `?token=${token}` : ''}`;
@@ -351,6 +373,13 @@ const Tasks: React.FC = () => {
               eventSource.close();
               setIsLiveLog(false);
               setLogLoading(false);
+
+              // 停止计时器
+              if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+
               // 不要覆盖已有的日志内容
               setLogContent(prev => prev ? prev + '\n[日志流已结束]' : '日志流连接失败');
             };
@@ -374,9 +403,12 @@ const Tasks: React.FC = () => {
           const logs = response.data || response;
           if (logs && logs.length > 0) {
             const log = logs[0];
-            // 添加任务开始时间
+            // 添加任务开始时间和耗时
             const startTime = new Date(log.created_at).toLocaleString('zh-CN');
-            setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}`);
+            const durationText = log.duration
+              ? `\n[执行耗时: ${log.duration}ms (${(log.duration / 1000).toFixed(2)}s)]`
+              : '';
+            setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}${durationText}`);
           } else {
             setLogContent('暂无执行日志');
           }
@@ -396,11 +428,19 @@ const Tasks: React.FC = () => {
     setLogVisible(false);
     setLogContent('');
     setIsLiveLog(false);
+    setCurrentViewTask(null);
+    setElapsedTime(0);
 
     // 关闭SSE连接
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
+    }
+
+    // 清除计时器
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
   };
 
@@ -744,7 +784,7 @@ const Tasks: React.FC = () => {
               <FormItem label="执行命令" field="command" rules={[{ required: true, message: '请输入执行命令' }]}>
                 <Input.TextArea
                   placeholder="例如: python3 scripts/test.py&#10;或: node scripts/app.js&#10;或: bash scripts/backup.sh"
-                  rows={4}
+                  autoSize={{ minRows: 1, maxRows: 5 }}
                   style={{ fontFamily: 'monospace' }}
                 />
               </FormItem>
@@ -773,7 +813,7 @@ const Tasks: React.FC = () => {
               >
                 <Input.TextArea
                   placeholder="例如: cd /path/to/dir"
-                  rows={3}
+                  autoSize={{ minRows: 1, maxRows: 5 }}
                   style={{ fontFamily: 'monospace' }}
                 />
               </FormItem>
@@ -785,7 +825,7 @@ const Tasks: React.FC = () => {
               >
                 <Input.TextArea
                   placeholder="例如: rm -f /tmp/*.tmp"
-                  rows={3}
+                  autoSize={{ minRows: 1, maxRows: 5 }}
                   style={{ fontFamily: 'monospace' }}
                 />
               </FormItem>
@@ -839,8 +879,34 @@ const Tasks: React.FC = () => {
           >
             {logContent || '暂无日志'}
           </div>
+          {currentViewTask && runningTasks.has(currentViewTask.id) && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '8px 12px',
+                background: '#f0f9ff',
+                border: '1px solid #bae7ff',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span style={{ color: '#1890ff', fontWeight: 500 }}>
+                实时耗时: {elapsedTime}ms ({(elapsedTime / 1000).toFixed(2)}s)
+              </span>
+              <IconPlayArrow style={{ color: '#1890ff', fontSize: '16px', animation: 'spin 1s linear infinite' }} />
+            </div>
+          )}
         </Spin>
       </Modal>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       <Modal
         title="分组管理"

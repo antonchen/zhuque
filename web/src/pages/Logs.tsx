@@ -94,7 +94,10 @@ const Logs: React.FC = () => {
 
     try {
       const startTime = new Date(log.created_at).toLocaleString('zh-CN');
-      setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}`);
+      const durationText = log.duration
+        ? `\n[执行耗时: ${log.duration}ms (${(log.duration / 1000).toFixed(2)}s)]`
+        : '';
+      setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}${durationText}`);
     } finally {
       setLogLoading(false);
     }
@@ -129,6 +132,19 @@ const Logs: React.FC = () => {
       dataIndex: 'created_at',
       width: 180,
       render: (time: string) => new Date(time).toLocaleString('zh-CN'),
+    },
+    {
+      title: '耗时',
+      dataIndex: 'duration',
+      width: 120,
+      render: (duration: number | undefined) => {
+        if (!duration) return '-';
+        return (
+          <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+            {duration}ms ({(duration / 1000).toFixed(2)}s)
+          </span>
+        );
+      },
     },
     {
       title: '日志预览',

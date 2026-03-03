@@ -93,6 +93,14 @@ const Dashboard: React.FC = () => {
       dataIndex: 'created_at',
       render: (time: string) => new Date(time).toLocaleString('zh-CN'),
     },
+    {
+      title: '耗时',
+      dataIndex: 'duration',
+      render: (duration: number | undefined) => {
+        if (!duration) return '-';
+        return `${duration}ms (${(duration / 1000).toFixed(2)}s)`;
+      },
+    },
   ];
 
   return (

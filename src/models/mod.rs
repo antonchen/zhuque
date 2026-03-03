@@ -119,6 +119,7 @@ pub struct Log {
     pub task_id: i64,
     pub output: String,
     pub status: String, // success/failed
+    pub duration: Option<i64>, // 执行耗时（毫秒）
     pub created_at: DateTime<Utc>,
 }
 

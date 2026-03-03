@@ -265,6 +265,7 @@ impl Executor {
     /// 执行任务并返回 (execution_id, output, success)
     pub async fn execute(&self, task: &Task) -> Result<(String, String, bool)> {
         let execution_id = Uuid::new_v4().to_string();
+        let start_time = std::time::Instant::now();
         info!("Executing task: {} ({}) with execution_id: {}", task.name, task.command, execution_id);
 
         // 创建广播通道和日志缓存
@@ -446,6 +447,17 @@ impl Executor {
                 }
             }
         }
+
+        // 计算总耗时并发送
+        let duration = start_time.elapsed().as_millis() as i64;
+        let duration_msg = format!("[执行耗时: {}ms ({:.2}s)]", duration, duration as f64 / 1000.0);
+        let _ = tx.send(duration_msg.clone());
+        // 缓存耗时消息
+        if let Some(buffer) = log_buffers.write().await.get_mut(&exec_id_clone) {
+            buffer.push(duration_msg.clone());
+        }
+        output.push_str(&duration_msg);
+        output.push('\n');
 
         self.log_channels.write().await.remove(&execution_id);
         self.executions.write().await.remove(&execution_id);

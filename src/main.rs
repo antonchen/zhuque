@@ -229,13 +229,21 @@ async fn main() -> Result<()> {
                         info!("Found {} startup tasks", startup_tasks.len());
                         for task in startup_tasks {
                             info!("Executing startup task: {}", task.name);
+                            let start_time = chrono::Utc::now();
+
                             match executor_clone.execute(&task).await {
                                 Ok((_execution_id, output, success)) => {
+                                    let duration = (chrono::Utc::now() - start_time).num_milliseconds();
                                     let status = if success { "success" } else { "failed" };
                                     info!("Startup task {} completed with status: {}", task.name, status);
 
+                                    // 更新任务执行信息
+                                    if let Err(e) = task_service_clone.update_run_info(task.id, start_time, duration).await {
+                                        error!("Failed to update startup task run info: {}", e);
+                                    }
+
                                     // 记录日志
-                                    if let Err(e) = log_service_clone.create(task.id, output, status.to_string()).await {
+                                    if let Err(e) = log_service_clone.create(task.id, output, status.to_string(), Some(duration)).await {
                                         error!("Failed to save startup task log: {}", e);
                                     }
                                 }

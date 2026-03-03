@@ -71,6 +71,7 @@ export interface Log {
   task_id: number;
   output: string;
   status: string;
+  duration?: number; // 执行耗时（毫秒）
   created_at: string;
 }
 
