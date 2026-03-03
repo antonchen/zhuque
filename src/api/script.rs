@@ -30,6 +30,11 @@ pub struct RenameRequest {
 }
 
 #[derive(Deserialize)]
+pub struct CopyRequest {
+    pub target_path: String,
+}
+
+#[derive(Deserialize)]
 pub struct ExecuteContentRequest {
     pub content: String,
     pub script_type: String, // sh, py, js
@@ -275,6 +280,23 @@ pub async fn rename_script(
         .rename(&old_path, &payload.new_path)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn copy_script(
+    State(state): State<Arc<AppState>>,
+    Path(source_path): Path<String>,
+    Json(payload): Json<CopyRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    state
+        .script_service
+        .copy(&source_path, &payload.target_path)
+        .await
+        .map_err(|e| {
+            tracing::error!("Copy failed: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }

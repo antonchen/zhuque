@@ -189,6 +189,95 @@ impl ScriptService {
         Ok(())
     }
 
+    pub async fn copy(&self, source_path: &str, target_path: &str) -> Result<()> {
+        self.validate_path(source_path)?;
+        self.validate_path(target_path)?;
+
+        let source_full = self.base_path.join(source_path);
+        let target_full = self.base_path.join(target_path);
+
+        // 检查源路径是否存在
+        if !source_full.exists() {
+            return Err(anyhow!("Source path does not exist"));
+        }
+
+        // 检查目标路径是否已存在
+        if target_full.exists() {
+            return Err(anyhow!("Target path already exists"));
+        }
+
+        // 确保目标路径的父目录存在
+        if let Some(parent) = target_full.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        let metadata = tokio::fs::metadata(&source_full).await?;
+
+        if metadata.is_dir() {
+            // 目录复制：使用 spawn_blocking 避免阻塞
+            let source_clone = source_full.clone();
+            let target_clone = target_full.clone();
+
+            tokio::task::spawn_blocking(move || {
+                Self::copy_dir_recursive(&source_clone, &target_clone)
+            })
+            .await??;
+        } else {
+            // 文件复制：直接使用 tokio::fs::copy
+            tokio::fs::copy(&source_full, &target_full).await?;
+
+            // 保留执行权限
+            #[cfg(unix)]
+            {
+                let source_permissions = metadata.permissions();
+                tokio::fs::set_permissions(&target_full, source_permissions).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 递归复制目录（同步函数，在 spawn_blocking 中调用）
+    fn copy_dir_recursive(source: &std::path::Path, target: &std::path::Path) -> Result<()> {
+        use std::fs;
+
+        // 创建目标目录
+        fs::create_dir_all(target)?;
+
+        // 复制目录权限
+        #[cfg(unix)]
+        {
+            let metadata = fs::metadata(source)?;
+            fs::set_permissions(target, metadata.permissions())?;
+        }
+
+        // 遍历源目录
+        for entry in fs::read_dir(source)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            let source_path = entry.path();
+            let file_name = entry.file_name();
+            let target_path = target.join(&file_name);
+
+            if file_type.is_dir() {
+                // 递归复制子目录
+                Self::copy_dir_recursive(&source_path, &target_path)?;
+            } else {
+                // 复制文件
+                fs::copy(&source_path, &target_path)?;
+
+                // 保留文件权限
+                #[cfg(unix)]
+                {
+                    let metadata = fs::metadata(&source_path)?;
+                    fs::set_permissions(&target_path, metadata.permissions())?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn delete(&self, path: &str) -> Result<()> {
         self.validate_path(path)?;
         let full_path = self.base_path.join(path);

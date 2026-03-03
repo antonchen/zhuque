@@ -180,6 +180,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
                 .delete(script::delete_script),
         )
         .route("/api/scripts/rename/*path", post(script::rename_script))
+        .route("/api/scripts/copy/*path", post(script::copy_script))
         // 依赖管理
         .route(
             "/api/dependences",

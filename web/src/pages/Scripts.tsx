@@ -12,6 +12,7 @@ import {
   Dropdown,
   Menu,
   Spin,
+  Tree,
 } from '@arco-design/web-react';
 import {
   IconPlus,
@@ -28,6 +29,8 @@ import {
   IconRefresh,
   IconMenuFold,
   IconMenuUnfold,
+  IconCopy,
+  IconDragArrow,
 } from '@arco-design/web-react/icon';
 import Editor from '@monaco-editor/react';
 import axios from 'axios';
@@ -56,6 +59,12 @@ const Scripts: React.FC = () => {
   const [createFolderVisible, setCreateFolderVisible] = useState(false);
   const [renameVisible, setRenameVisible] = useState(false);
   const [renamingFile, setRenamingFile] = useState<ScriptFile | null>(null);
+  const [copyVisible, setCopyVisible] = useState(false);
+  const [moveVisible, setMoveVisible] = useState(false);
+  const [operatingFile, setOperatingFile] = useState<ScriptFile | null>(null);
+  const [treeData, setTreeData] = useState<any[]>([]);
+  const [selectedTreeNode, setSelectedTreeNode] = useState<string>('');
+  const [targetFileName, setTargetFileName] = useState('');
   const [logVisible, setLogVisible] = useState(false);
   const [logContent, setLogContent] = useState('');
   const [logLoading, setLogLoading] = useState(false);
@@ -63,6 +72,8 @@ const Scripts: React.FC = () => {
   const [form] = Form.useForm();
   const [folderForm] = Form.useForm();
   const [renameForm] = Form.useForm();
+  const [copyForm] = Form.useForm();
+  const [moveForm] = Form.useForm();
 
   useEffect(() => {
     loadFiles();
@@ -279,6 +290,165 @@ const Scripts: React.FC = () => {
     }
   };
 
+  // 递归构建文件树
+  const buildTreeData = async (path: string = ''): Promise<any[]> => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('/api/scripts', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { path },
+      });
+
+      const items: ScriptFile[] = res.data
+        .filter((file: any) => !file.name.startsWith('.'))
+        .map((file: any) => ({
+          ...file,
+          isDirectory: file.is_directory,
+        }));
+
+      const treeNodes = await Promise.all(
+        items
+          .filter((item) => item.isDirectory)
+          .map(async (item) => ({
+            key: item.path,
+            title: item.name,
+            icon: <IconFolder />,
+            children: await buildTreeData(item.path),
+          }))
+      );
+
+      return treeNodes;
+    } catch (error) {
+      console.error('加载目录树失败', error);
+      return [];
+    }
+  };
+
+  const handleCopy = async (file: ScriptFile) => {
+    setOperatingFile(file);
+    // 默认文件名为 "文件名_copy"
+    const defaultName = file.isDirectory
+      ? `${file.name}_copy`
+      : file.name.replace(/(\.[^.]+)$/, '_copy$1');
+    setTargetFileName(defaultName);
+    setSelectedTreeNode('');
+
+    // 加载文件树
+    const tree = await buildTreeData();
+    setTreeData([
+      {
+        key: '',
+        title: '根目录',
+        icon: <IconFolder />,
+        children: tree,
+      },
+    ]);
+
+    setCopyVisible(true);
+  };
+
+  const handleCopySubmit = async () => {
+    if (!operatingFile) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const targetPath = selectedTreeNode
+        ? `${selectedTreeNode}/${targetFileName}`
+        : targetFileName;
+
+      await axios.post(
+        `/api/scripts/copy/${operatingFile.path}`,
+        { target_path: targetPath },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      Message.success('复制成功');
+      setCopyVisible(false);
+      setOperatingFile(null);
+      setTargetFileName('');
+      setSelectedTreeNode('');
+      loadFiles();
+      loadTree();
+    } catch (error: any) {
+      Message.error(error.response?.data?.message || '复制失败');
+    }
+  };
+
+  const handleMove = async (file: ScriptFile) => {
+    setOperatingFile(file);
+    setTargetFileName(file.name);
+    setSelectedTreeNode('');
+
+    // 加载文件树
+    const tree = await buildTreeData();
+    setTreeData([
+      {
+        key: '',
+        title: '根目录',
+        icon: <IconFolder />,
+        children: tree,
+      },
+    ]);
+
+    setMoveVisible(true);
+  };
+
+  const handleMoveSubmit = async () => {
+    if (!operatingFile) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const targetPath = selectedTreeNode
+        ? `${selectedTreeNode}/${targetFileName}`
+        : targetFileName;
+
+      await axios.post(
+        `/api/scripts/rename/${operatingFile.path}`,
+        { new_path: targetPath },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      Message.success('移动成功');
+      setMoveVisible(false);
+      setOperatingFile(null);
+      setTargetFileName('');
+      setSelectedTreeNode('');
+
+      // 如果移动的是当前打开的文件，清除选择
+      if (selectedFile?.path === operatingFile.path) {
+        setSelectedFile(null);
+        setFileContent('');
+        setHasUnsavedChanges(false);
+      }
+
+      loadFiles();
+      loadTree();
+    } catch (error: any) {
+      Message.error(error.response?.data?.message || '移动失败');
+    }
+  };
+
+  const handleCopyPath = (file: ScriptFile) => {
+    if (file.isDirectory) return;
+
+    // 复制文件路径到剪贴板
+    navigator.clipboard.writeText(file.path).then(() => {
+      Message.success('路径已复制到剪贴板');
+    }).catch(() => {
+      Message.error('复制失败');
+    });
+  };
+
   const handleDownload = async (file: ScriptFile) => {
     if (file.isDirectory) return;
 
@@ -488,7 +658,7 @@ const Scripts: React.FC = () => {
                 )}
                 <span style={{ fontSize: '14px' }}>{file.name}</span>
               </Space>
-              <div style={{ marginLeft: 'auto' }}>
+              <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
                 <Dropdown
                   droplist={
                     <Menu>
@@ -508,10 +678,30 @@ const Scripts: React.FC = () => {
                           </Space>
                         </Menu.Item>
                       )}
+                      {!file.isDirectory && (
+                        <Menu.Item key="copyPath" onClick={() => handleCopyPath(file)}>
+                          <Space>
+                            <IconCopy />
+                            复制路径
+                          </Space>
+                        </Menu.Item>
+                      )}
                       <Menu.Item key="rename" onClick={() => handleRename(file)}>
                         <Space>
                           <IconEdit />
                           重命名
+                        </Space>
+                      </Menu.Item>
+                      <Menu.Item key="copy" onClick={() => handleCopy(file)}>
+                        <Space>
+                          <IconCopy />
+                          复制
+                        </Space>
+                      </Menu.Item>
+                      <Menu.Item key="move" onClick={() => handleMove(file)}>
+                        <Space>
+                          <IconDragArrow />
+                          移动
                         </Space>
                       </Menu.Item>
                       <Menu.Item
@@ -538,7 +728,6 @@ const Scripts: React.FC = () => {
                     type="text"
                     size="small"
                     icon={<IconMore />}
-                    onClick={(e) => e.stopPropagation()}
                   />
                 </Dropdown>
               </div>
@@ -899,6 +1088,7 @@ const Scripts: React.FC = () => {
           form.resetFields();
         }}
         autoFocus={false}
+        style={{ maxWidth: '90vw', width: 500 }}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -928,6 +1118,7 @@ const Scripts: React.FC = () => {
           folderForm.resetFields();
         }}
         autoFocus={false}
+        style={{ maxWidth: '90vw', width: 500 }}
       >
         <Form form={folderForm} layout="vertical">
           <Form.Item
@@ -951,6 +1142,7 @@ const Scripts: React.FC = () => {
           setRenamingFile(null);
         }}
         autoFocus={false}
+        style={{ maxWidth: '90vw', width: 500 }}
       >
         <Form form={renameForm} layout="vertical">
           <Form.Item
@@ -963,6 +1155,102 @@ const Scripts: React.FC = () => {
         </Form>
       </Modal>
 
+      {/* 复制 */}
+      <Modal
+        title={`复制 - ${operatingFile?.name}`}
+        visible={copyVisible}
+        onOk={handleCopySubmit}
+        onCancel={() => {
+          setCopyVisible(false);
+          setOperatingFile(null);
+          setTargetFileName('');
+          setSelectedTreeNode('');
+        }}
+        autoFocus={false}
+        style={{ maxWidth: '90vw', width: 600 }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>选择目标文件夹：</div>
+          <div style={{
+            border: '1px solid var(--color-border)',
+            borderRadius: 4,
+            padding: 8,
+            maxHeight: '40vh',
+            overflowY: 'auto'
+          }}>
+            <Tree
+              treeData={treeData}
+              selectedKeys={selectedTreeNode ? [selectedTreeNode] : []}
+              onSelect={(keys) => {
+                if (keys.length > 0) {
+                  setSelectedTreeNode(keys[0] as string);
+                }
+              }}
+              defaultExpandAll
+            />
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-3)' }}>
+            当前选择：{selectedTreeNode || '根目录'}
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>文件名：</div>
+          <Input
+            value={targetFileName}
+            onChange={(value) => setTargetFileName(value)}
+            placeholder="请输入文件名"
+          />
+        </div>
+      </Modal>
+
+      {/* 移动 */}
+      <Modal
+        title={`移动 - ${operatingFile?.name}`}
+        visible={moveVisible}
+        onOk={handleMoveSubmit}
+        onCancel={() => {
+          setMoveVisible(false);
+          setOperatingFile(null);
+          setTargetFileName('');
+          setSelectedTreeNode('');
+        }}
+        autoFocus={false}
+        style={{ maxWidth: '90vw', width: 600 }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>选择目标文件夹：</div>
+          <div style={{
+            border: '1px solid var(--color-border)',
+            borderRadius: 4,
+            padding: 8,
+            maxHeight: '40vh',
+            overflowY: 'auto'
+          }}>
+            <Tree
+              treeData={treeData}
+              selectedKeys={selectedTreeNode ? [selectedTreeNode] : []}
+              onSelect={(keys) => {
+                if (keys.length > 0) {
+                  setSelectedTreeNode(keys[0] as string);
+                }
+              }}
+              defaultExpandAll
+            />
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-text-3)' }}>
+            当前选择：{selectedTreeNode || '根目录'}
+          </div>
+        </div>
+        <div>
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>文件名：</div>
+          <Input
+            value={targetFileName}
+            onChange={(value) => setTargetFileName(value)}
+            placeholder="请输入文件名"
+          />
+        </div>
+      </Modal>
+
       {/* 执行日志 */}
       <Modal
         title="执行日志"
@@ -970,7 +1258,7 @@ const Scripts: React.FC = () => {
         onCancel={() => setLogVisible(false)}
         footer={null}
         autoFocus={false}
-        style={{ width: '90%', maxWidth: 1000 }}
+        style={{ maxWidth: '95vw', width: 1000 }}
       >
         <div
           style={{
@@ -980,7 +1268,7 @@ const Scripts: React.FC = () => {
             borderRadius: '4px',
             fontFamily: 'Consolas, Monaco, "Courier New", monospace',
             fontSize: '13px',
-            maxHeight: '600px',
+            maxHeight: '60vh',
             overflowY: 'auto',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-all',
