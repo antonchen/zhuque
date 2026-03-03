@@ -22,10 +22,6 @@ pub fn aggressive_memory_reclaim() {
     let allocated_before = stats::allocated::read().unwrap_or(0);
     let resident_before = stats::resident::read().unwrap_or(0);
 
-    info!("Before reclaim - Allocated: {:.2} MB, Resident: {:.2} MB",
-          allocated_before as f64 / 1024.0 / 1024.0,
-          resident_before as f64 / 1024.0 / 1024.0);
-
     // 强制推进 epoch
     if let Ok(e) = epoch::mib() {
         let _ = e.advance();
@@ -40,16 +36,8 @@ pub fn aggressive_memory_reclaim() {
     let allocated_after = stats::allocated::read().unwrap_or(0);
     let resident_after = stats::resident::read().unwrap_or(0);
 
-    info!("After reclaim - Allocated: {:.2} MB, Resident: {:.2} MB",
-          allocated_after as f64 / 1024.0 / 1024.0,
-          resident_after as f64 / 1024.0 / 1024.0);
-
     let freed_allocated = if allocated_before > allocated_after { allocated_before - allocated_after } else { 0 };
     let freed_resident = if resident_before > resident_after { resident_before - resident_after } else { 0 };
-
-    info!("Freed - Allocated: {:.2} MB, Resident: {:.2} MB",
-          freed_allocated as f64 / 1024.0 / 1024.0,
-          freed_resident as f64 / 1024.0 / 1024.0);
 }
 
 #[cfg(not(all(feature = "jemalloc", target_os = "linux")))]
