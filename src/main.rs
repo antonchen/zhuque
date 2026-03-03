@@ -74,6 +74,26 @@ async fn main() -> Result<()> {
 
     script_service.init().await?;
 
+    // 检查是否需要自动恢复备份
+    info!("Checking auto restore configuration...");
+    if let Ok(backup_config) = config_service.get_auto_backup_config().await {
+        if backup_config.auto_restore_on_startup
+            && !backup_config.webdav_url.is_empty()
+            && !backup_config.webdav_username.is_empty()
+            && !backup_config.webdav_password.is_empty()
+        {
+            info!("Auto restore is enabled, restoring latest backup...");
+            if let Err(e) = restore_latest_backup(&backup_config, &data_dir).await {
+                error!("Failed to restore backup on startup: {}", e);
+            } else {
+                info!("Backup restored successfully, reinitializing database...");
+                // 重新初始化数据库
+                let pool = init_db(&database_url).await?;
+                *shared_pool.write().await = pool;
+            }
+        }
+    }
+
     // 加载并应用镜像配置
     info!("Loading mirror configuration...");
     if let Err(e) = config_service.load_and_apply_mirror_config().await {
@@ -201,6 +221,69 @@ async fn main() -> Result<()> {
     });
 
     axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+async fn restore_latest_backup(
+    backup_config: &models::config::AutoBackupConfig,
+    data_dir: &PathBuf,
+) -> Result<()> {
+    use services::WebDavClient;
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
+    let client = WebDavClient::new(
+        backup_config.webdav_url.clone(),
+        backup_config.webdav_username.clone(),
+        backup_config.webdav_password.clone(),
+    );
+
+    let list_path = backup_config.remote_path.as_deref().unwrap_or("");
+
+    // 列出所有备份文件
+    let mut files = client.list_files(list_path).await?;
+
+    // 过滤出备份文件
+    files.retain(|f| f.name.starts_with("zhuque_backup_") && f.name.ends_with(".tar.gz"));
+
+    if files.is_empty() {
+        info!("No backup files found on WebDAV");
+        return Ok(());
+    }
+
+    // 按文件名排序，获取最新的
+    files.sort_by(|a, b| b.name.cmp(&a.name));
+    let latest_file = &files[0];
+
+    info!("Found latest backup: {}", latest_file.name);
+
+    // 下载到临时文件
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join(&latest_file.name);
+
+    client.download_file(&latest_file.path, &temp_file).await?;
+
+    info!("Downloaded backup file: {} bytes", tokio::fs::metadata(&temp_file).await?.len());
+
+    // 清空 data 目录
+    if data_dir.exists() {
+        tokio::fs::remove_dir_all(&data_dir).await?;
+    }
+    tokio::fs::create_dir_all(&data_dir).await?;
+
+    // 解压备份文件
+    let file_data = std::fs::read(&temp_file)?;
+    let decoder = GzDecoder::new(&file_data[..]);
+    let mut archive = Archive::new(decoder);
+
+    let parent_dir = data_dir.parent().unwrap_or(std::path::Path::new("."));
+    archive.unpack(parent_dir)?;
+
+    // 删除临时文件
+    let _ = tokio::fs::remove_file(&temp_file).await;
+
+    info!("Backup restored successfully");
 
     Ok(())
 }

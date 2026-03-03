@@ -150,6 +150,40 @@ impl WebDavClient {
         Ok(())
     }
 
+    /// 下载文件
+    pub async fn download_file(&self, remote_path: &str, local_path: &Path) -> Result<()> {
+        // 处理路径，避免重复
+        let base_path = self.base_url.trim_start_matches("https://").trim_start_matches("http://");
+        let base_path = base_path.split_once('/').map(|(_, p)| format!("/{}", p)).unwrap_or_default();
+
+        let relative_path = if !base_path.is_empty() && remote_path.starts_with(&base_path) {
+            remote_path.trim_start_matches(&base_path)
+        } else {
+            remote_path
+        };
+
+        let url = format!("{}/{}", self.base_url, relative_path.trim_start_matches('/'));
+
+        tracing::info!("Downloading file from WebDAV: {}", url);
+
+        let response = self
+            .client
+            .get(&url)
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .await
+            .context("Failed to download file")?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("Download failed with status: {}", response.status());
+        }
+
+        let bytes = response.bytes().await?;
+        fs::write(local_path, bytes).await.context("Failed to write downloaded file")?;
+
+        Ok(())
+    }
+
     /// 测试连接
     pub async fn test_connection(&self) -> Result<()> {
         let response = self
