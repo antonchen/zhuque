@@ -282,6 +282,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 
     if static_dir.exists() {
         app.nest_service("/assets", ServeDir::new(static_dir.join("assets")))
+            .route_service("/vite.svg", ServeDir::new(static_dir.clone()))
             .fallback(spa_fallback)
     } else {
         app.fallback(not_found)
