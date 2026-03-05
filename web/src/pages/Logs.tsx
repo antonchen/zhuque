@@ -19,7 +19,7 @@ const { Option } = Select;
 const Logs: React.FC = () => {
   console.log('Logs component mounted');
   const [logs, setLogs] = useState<Log[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Array<{ id: number; name: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [logVisible, setLogVisible] = useState(false);
@@ -46,7 +46,7 @@ const Logs: React.FC = () => {
 
   const loadTasks = async () => {
     try {
-      const res: any = await taskApi.list();
+      const res: any = await taskApi.listSimple();
       console.log('Tasks loaded:', res);
       setTasks(res);
       if (res.length > 0) {

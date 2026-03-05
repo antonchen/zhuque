@@ -1,7 +1,7 @@
 use crate::api::AppState;
 use crate::models::{CreateTask, UpdateTask};
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{
         sse::{Event, KeepAlive, Sse},
@@ -10,11 +10,25 @@ use axum::{
     Json,
 };
 use futures::stream::{Stream, StreamExt};
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
 
+#[derive(Debug, Deserialize)]
+pub struct ListTasksQuery {
+    /// 字段过滤：simple=只返回id和name，默认返回全部字段
+    fields: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SimpleTask {
+    id: i64,
+    name: String,
+}
+
 pub async fn list_tasks(
     State(state): State<Arc<AppState>>,
+    Query(query): Query<ListTasksQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let tasks = state
         .task_service
@@ -22,7 +36,20 @@ pub async fn list_tasks(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(tasks))
+    // 根据 fields 参数决定返回格式
+    match query.fields.as_deref() {
+        Some("simple") => {
+            let simple_tasks: Vec<SimpleTask> = tasks
+                .into_iter()
+                .map(|t| SimpleTask {
+                    id: t.id,
+                    name: t.name,
+                })
+                .collect();
+            Ok(Json(serde_json::json!(simple_tasks)))
+        }
+        _ => Ok(Json(serde_json::json!(tasks))),
+    }
 }
 
 pub async fn get_task(

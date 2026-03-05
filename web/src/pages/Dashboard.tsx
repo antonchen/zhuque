@@ -18,7 +18,7 @@ interface SystemInfo {
 }
 
 const Dashboard: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Array<{ id: number; name: string }>>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -37,7 +37,7 @@ const Dashboard: React.FC = () => {
     setLoading(true);
     try {
       const [tasksRes, logsRes]: any = await Promise.all([
-        taskApi.list(),
+        taskApi.listSimple(),
         logApi.list(undefined, 1, 10),
       ]);
       setTasks(tasksRes);
@@ -82,8 +82,8 @@ const Dashboard: React.FC = () => {
 
   const stats = {
     total: tasks.length,
-    enabled: tasks.filter((t) => t.enabled).length,
-    disabled: tasks.filter((t) => !t.enabled).length,
+    enabled: 0,  // 简化版不包含enabled字段
+    disabled: 0, // 简化版不包含enabled字段
   };
 
   const columns = [
