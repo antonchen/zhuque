@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Grid, Card, Statistic, Table, Space, Tag, Button, Progress, Modal } from '@arco-design/web-react';
-import { IconClockCircle, IconCheckCircle, IconCloseCircle, IconFile } from '@arco-design/web-react/icon';
+import { IconClockCircle, IconCheckCircle, IconCloseCircle, IconFile, IconGithub } from '@arco-design/web-react/icon';
 import { taskApi } from '@/api/task';
 import { logApi } from '@/api/log';
 import axios from 'axios';
@@ -268,6 +268,17 @@ const Dashboard: React.FC = () => {
           </pre>
         )}
       </Modal>
+
+      <div className="dashboard-footer">
+        <a
+          href="https://github.com/mtvpls/zhuque"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <IconGithub style={{ marginRight: '8px' }} />
+          GitHub
+        </a>
+      </div>
     </div>
   );
 };

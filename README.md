@@ -113,12 +113,15 @@ docker run -d \
   --name zhuque \
   -p 3000:3000 \
   -v $(pwd)/data:/app/data \
-  -e DATABASE_URL=sqlite:///app/data/db/zhuque.db \
+  -e AUTH_USERNAME=admin \
+  -e AUTH_PASSWORD=your_secure_password \
   -e RUST_LOG=info \
   -e TZ=Asia/Shanghai \
   --restart unless-stopped \
   ghcr.io/mtvpls/zhuque:latest
 ```
+
+> **重要提示：** 生产环境请务必修改 `AUTH_PASSWORD` 为强密码！
 
 #### 方式二：Docker Compose
 
@@ -139,12 +142,22 @@ cd web
 npm run build
 ```
 
-3. 运行
+3. 设置环境变量（可选，创建 `.env` 文件或直接导出）
+```bash
+export AUTH_USERNAME=admin
+export AUTH_PASSWORD=your_secure_password
+export RUST_LOG=info
+export TZ=Asia/Shanghai
+```
+
+4. 运行
 ```bash
 ./target/release/zhuque
 ```
 
 后端会自动服务前端静态文件。
+
+> **重要提示：** 生产环境请务必修改 `AUTH_PASSWORD` 为强密码！
 
 ## 📁 项目结构
 
