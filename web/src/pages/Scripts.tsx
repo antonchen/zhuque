@@ -1070,27 +1070,43 @@ const Scripts: React.FC = () => {
                 {logLoading ? '等待执行...' : logContent || '点击"运行调试"执行脚本'}
               </div>
             </div>
-          ) : (
-            // 查看/编辑模式
+          ) : isEditing ? (
+            // 编辑模式
             <Editor
               height="100%"
               language={getLanguage(selectedFile.name)}
               value={fileContent}
               onChange={(value) => {
-                if (isEditing) {
-                  setFileContent(value || '');
-                  setHasUnsavedChanges(true);
-                }
+                setFileContent(value || '');
+                setHasUnsavedChanges(true);
               }}
               theme="vs-dark"
               options={{
-                readOnly: !isEditing,
                 fontSize: 14,
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
               }}
             />
+          ) : (
+            // 查看模式：显示纯文本
+            <div
+              style={{
+                height: '100%',
+                backgroundColor: '#1e1e1e',
+                color: '#d4d4d4',
+                padding: '16px',
+                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                fontSize: '14px',
+                overflowY: 'auto',
+                overflowX: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                lineHeight: '1.6',
+              }}
+            >
+              {fileContent || '文件为空'}
+            </div>
           )
         ) : (
           <div

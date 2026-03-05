@@ -4,7 +4,7 @@ import { IconClockCircle, IconCheckCircle, IconCloseCircle, IconFile, IconGithub
 import { taskApi } from '@/api/task';
 import { logApi } from '@/api/log';
 import axios from 'axios';
-import type { Task, Log } from '@/types';
+import type { Log } from '@/types';
 import './Dashboard.css';
 
 const { Row, Col } = Grid;

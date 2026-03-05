@@ -94,7 +94,7 @@ const Tasks: React.FC = () => {
             setTasks(prevTasks =>
               prevTasks.map(t =>
                 t.id === update.changed_task_id
-                  ? { ...t, last_run_at: new Date().toISOString(), last_run_duration: null }
+                  ? { ...t, last_run_at: new Date().toISOString(), last_run_duration: undefined }
                   : t
               )
             );

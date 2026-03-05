@@ -12,7 +12,7 @@ import {
 import { IconFile, IconRefresh } from '@arco-design/web-react/icon';
 import { logApi } from '@/api/log';
 import { taskApi } from '@/api/task';
-import type { Log, Task } from '@/types';
+import type { Log } from '@/types';
 
 const { Option } = Select;
 
