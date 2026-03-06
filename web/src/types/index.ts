@@ -69,7 +69,7 @@ export interface Subscription {
 export interface Log {
   id: number;
   task_id: number;
-  output: string;
+  output?: string; // 列表接口不返回，详情接口才返回
   status: string;
   duration?: number; // 执行耗时（毫秒）
   created_at: string;

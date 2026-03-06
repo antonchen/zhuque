@@ -66,7 +66,6 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     loadGroups();
-    loadTasks();
     loadWebhookToken();
 
     // 使用SSE订阅运行中的任务
@@ -431,9 +430,15 @@ const Tasks: React.FC = () => {
           const logs = response.data || response;
           if (logs && logs.length > 0) {
             const log = logs[0];
-            // 添加任务开始时间
-            const startTime = new Date(log.created_at).toLocaleString('zh-CN');
-            setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}`);
+            // 获取完整日志详情
+            try {
+              const logDetail = await logApi.get(log.id);
+              const startTime = new Date(logDetail.created_at).toLocaleString('zh-CN');
+              setLogContent(`[任务开始时间: ${startTime}]\n${logDetail.output || '无日志输出'}`);
+            } catch (error) {
+              console.error('Failed to load log detail:', error);
+              setLogContent('加载日志详情失败');
+            }
           } else {
             setLogContent('暂无执行日志');
           }

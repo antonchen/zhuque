@@ -75,20 +75,7 @@ const Scripts: React.FC = () => {
 
   useEffect(() => {
     loadFiles();
-    loadTree();
   }, [currentPath]);
-
-  const loadTree = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.get('/api/scripts', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { path: '' },
-      });
-    } catch (error) {
-      console.error('加载目录树失败', error);
-    }
-  };
 
   const loadFiles = async () => {
     setLoading(true);
@@ -282,7 +269,6 @@ const Scripts: React.FC = () => {
       }
 
       loadFiles();
-      loadTree();
     } catch (error: any) {
       Message.error('重命名失败');
     }
@@ -403,7 +389,6 @@ const Scripts: React.FC = () => {
       setTargetFileName('');
       setSelectedTreeNode('');
       loadFiles();
-      loadTree();
     } catch (error: any) {
       Message.error(error.response?.data?.message || '复制失败');
     }
@@ -462,7 +447,6 @@ const Scripts: React.FC = () => {
       }
 
       loadFiles();
-      loadTree();
     } catch (error: any) {
       Message.error(error.response?.data?.message || '移动失败');
     }
@@ -788,7 +772,6 @@ const Scripts: React.FC = () => {
                 icon={<IconRefresh />}
                 onClick={() => {
                   loadFiles();
-                  loadTree();
                 }}
               />
               <Button
@@ -864,7 +847,6 @@ const Scripts: React.FC = () => {
                   if (file.status === 'done') {
                     Message.success('压缩包上传并解压成功');
                     loadFiles();
-                    loadTree();
                   } else if (file.status === 'error') {
                     Message.error('压缩包上传失败');
                   }

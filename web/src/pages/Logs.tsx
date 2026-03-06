@@ -93,8 +93,12 @@ const Logs: React.FC = () => {
     setLogLoading(true);
 
     try {
-      const startTime = new Date(log.created_at).toLocaleString('zh-CN');
-      setLogContent(`[任务开始时间: ${startTime}]\n${log.output || '无日志输出'}`);
+      const logDetail = await logApi.get(log.id);
+      const startTime = new Date(logDetail.created_at).toLocaleString('zh-CN');
+      setLogContent(`[任务开始时间: ${startTime}]\n${logDetail.output || '无日志输出'}`);
+    } catch (error) {
+      console.error('Failed to load log detail:', error);
+      setLogContent('加载日志失败');
     } finally {
       setLogLoading(false);
     }
@@ -142,16 +146,6 @@ const Logs: React.FC = () => {
           </span>
         );
       },
-    },
-    {
-      title: '日志预览',
-      dataIndex: 'output',
-      ellipsis: true,
-      render: (output: string) => (
-        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-          {output ? output.substring(0, 100) : '无输出'}
-        </span>
-      ),
     },
     {
       title: '操作',

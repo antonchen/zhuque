@@ -37,6 +37,19 @@ pub async fn list_logs(
     Ok(Json(response))
 }
 
+pub async fn get_log(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let log = state.log_service
+        .get(id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    Ok(Json(log))
+}
+
 pub async fn delete_old_logs(
     State(state): State<Arc<AppState>>,
     Path(days): Path<i64>,

@@ -1,17 +1,26 @@
 use crate::models::Log;
 use anyhow::Result;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
-use sqlx::SqlitePool;
+use sqlx::{FromRow, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Serialize)]
 pub struct LogListResponse {
-    pub data: Vec<Log>,
+    pub data: Vec<LogListItem>,
     pub total: i64,
     pub page: i64,
     pub page_size: i64,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct LogListItem {
+    pub id: i64,
+    pub task_id: i64,
+    pub status: String,
+    pub duration: Option<i64>,
+    pub created_at: DateTime<Utc>,
 }
 
 pub struct LogService {
@@ -28,8 +37,8 @@ impl LogService {
         let offset = (page - 1) * page_size;
 
         let (logs, total) = if let Some(tid) = task_id {
-            let logs = sqlx::query_as::<_, Log>(
-                "SELECT * FROM logs WHERE task_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            let logs = sqlx::query_as::<_, LogListItem>(
+                "SELECT id, task_id, status, duration, created_at FROM logs WHERE task_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
             )
             .bind(tid)
             .bind(page_size)
@@ -46,8 +55,8 @@ impl LogService {
 
             (logs, total.0)
         } else {
-            let logs = sqlx::query_as::<_, Log>(
-                "SELECT * FROM logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            let logs = sqlx::query_as::<_, LogListItem>(
+                "SELECT id, task_id, status, duration, created_at FROM logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
             )
             .bind(page_size)
             .bind(offset)
@@ -67,6 +76,15 @@ impl LogService {
             page,
             page_size,
         })
+    }
+
+    pub async fn get(&self, id: i64) -> Result<Option<Log>> {
+        let pool = self.pool.read().await;
+        let log = sqlx::query_as::<_, Log>("SELECT * FROM logs WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&*pool)
+            .await?;
+        Ok(log)
     }
 
     pub async fn create(&self, task_id: i64, output: String, status: String, duration: Option<i64>) -> Result<Log> {

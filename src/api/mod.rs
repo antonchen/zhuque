@@ -148,6 +148,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         // 日志管理
         .route("/api/logs", get(log::list_logs))
+        .route("/api/logs/:id", get(log::get_log))
         .route("/api/logs/cleanup/:days", delete(log::delete_old_logs))
         // 环境变量管理
         .route(
