@@ -1,0 +1,7 @@
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .log-action-btn {
+    padding: 2px !important;
+    min-width: auto !important;
+  }
+}

@@ -13,6 +13,7 @@ import { IconFile, IconRefresh } from '@arco-design/web-react/icon';
 import { logApi } from '@/api/log';
 import { taskApi } from '@/api/task';
 import type { Log } from '@/types';
+import './Logs.css';
 
 const { Option } = Select;
 
@@ -25,11 +26,20 @@ const Logs: React.FC = () => {
   const [logVisible, setLogVisible] = useState(false);
   const [logContent, setLogContent] = useState('');
   const [logLoading, setLogLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     console.log('useEffect for loadTasks triggered');
@@ -149,16 +159,16 @@ const Logs: React.FC = () => {
     },
     {
       title: '操作',
-      width: 120,
-      fixed: 'right' as const,
+      width: isMobile ? 40 : 120,
       render: (_: any, record: Log) => (
         <Button
           type="text"
           size="small"
           icon={<IconFile />}
           onClick={() => handleViewLog(record)}
+          className="log-action-btn"
         >
-          查看日志
+          {!isMobile && <span className="log-action-text">查看日志</span>}
         </Button>
       ),
     },
