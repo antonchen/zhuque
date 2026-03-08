@@ -98,9 +98,8 @@ impl LogService {
         Ok(log)
     }
 
-    pub async fn create(&self, task_id: i64, output: String, status: String, duration: Option<i64>) -> Result<Log> {
+    pub async fn create(&self, task_id: i64, output: String, status: String, duration: Option<i64>, started_at: DateTime<Utc>) -> Result<Log> {
         let pool = self.pool.read().await;
-        let now = Utc::now();
         let result = sqlx::query(
             "INSERT INTO logs (task_id, output, status, duration, created_at) VALUES (?, ?, ?, ?, ?)",
         )
@@ -108,7 +107,7 @@ impl LogService {
         .bind(&output)
         .bind(&status)
         .bind(duration)
-        .bind(now)
+        .bind(started_at)
         .execute(&*pool)
         .await?;
 

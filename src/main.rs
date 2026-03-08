@@ -249,7 +249,7 @@ async fn main() -> Result<()> {
                                     }
 
                                     // 记录日志
-                                    if let Err(e) = log_service_clone.create(task.id, output, status.to_string(), Some(duration)).await {
+                                    if let Err(e) = log_service_clone.create(task.id, output, status.to_string(), Some(duration), start_time).await {
                                         error!("Failed to save startup task log: {}", e);
                                     }
                                 }
