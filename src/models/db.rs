@@ -261,6 +261,28 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
         .execute(&pool)
         .await?;
 
+    // 创建登录日志表
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS login_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            ip_address TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_login_logs_username ON login_logs(username)")
+        .execute(&pool)
+        .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_login_logs_created_at ON login_logs(created_at)")
+        .execute(&pool)
+        .await?;
+
     // 数据迁移：从环境变量迁移到数据库（一次性操作）
     migrate_auth_from_env(&pool).await?;
 

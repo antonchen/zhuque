@@ -9,6 +9,7 @@ import Env from '@/pages/Env';
 import Dependences from '@/pages/Dependences';
 import Subscriptions from '@/pages/Subscriptions';
 import Logs from '@/pages/Logs';
+import LoginLogs from '@/pages/LoginLogs';
 import Config from '@/pages/Config';
 import Terminal from '@/pages/Terminal';
 
@@ -52,6 +53,10 @@ const router = createBrowserRouter([
       {
         path: 'logs',
         element: <Logs />,
+      },
+      {
+        path: 'login-logs',
+        element: <LoginLogs />,
       },
       {
         path: 'config',

@@ -152,3 +152,11 @@ pub struct UpdateTaskGroup {
     pub name: Option<String>,
     pub description: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct LoginLog {
+    pub id: i64,
+    pub username: String,
+    pub ip_address: String,
+    pub created_at: DateTime<Utc>,
+}

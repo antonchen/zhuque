@@ -4,6 +4,7 @@ pub mod config;
 pub mod dependence;
 pub mod env;
 pub mod log;
+pub mod login_log;
 pub mod script;
 pub mod subscription;
 pub mod system;
@@ -14,7 +15,7 @@ pub mod terminal;
 
 use crate::middleware::{auth_middleware, webhook_auth_middleware};
 use crate::scheduler::{Scheduler, SubscriptionScheduler, BackupScheduler};
-use crate::services::{AuthService, ConfigService, DependenceService, EnvService, LogService, ScriptService, SubscriptionService, SystemLogCollector, TaskService, TaskGroupService, TotpService, UserService};
+use crate::services::{AuthService, ConfigService, DependenceService, EnvService, LoginLogService, LogService, ScriptService, SubscriptionService, SystemLogCollector, TaskService, TaskGroupService, TotpService, UserService};
 
 #[cfg(not(target_os = "android"))]
 use crate::services::TerminalService;
@@ -44,6 +45,7 @@ pub struct AppState {
     pub config_service: Arc<ConfigService>,
     pub auth_service: Arc<AuthService>,
     pub user_service: Arc<UserService>,
+    pub login_log_service: Arc<LoginLogService>,
     #[cfg(not(target_os = "android"))]
     pub terminal_service: Arc<TerminalService>,
     pub totp_service: Arc<TotpService>,
@@ -152,6 +154,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/logs/:id", get(log::get_log))
         .route("/api/logs/task/:task_id/latest", get(log::get_latest_log_by_task))
         .route("/api/logs/cleanup/:days", delete(log::delete_old_logs))
+        // 登录日志管理
+        .route("/api/login-logs", get(login_log::list_login_logs))
         // 环境变量管理
         .route(
             "/api/env",

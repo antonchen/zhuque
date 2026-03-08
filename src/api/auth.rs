@@ -6,6 +6,8 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use axum::extract::ConnectInfo;
+use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -57,10 +59,25 @@ pub async fn change_password(
 /// 第一步登录：验证用户名密码
 pub async fn login(
     State(state): State<Arc<AppState>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<LoginRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     match state.auth_service.login_step_one(&request).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => {
+            // 如果登录成功（不需要TOTP或已经返回token），记录登录日志
+            if response.token.is_some() {
+                let ip = addr.ip().to_string();
+                let username = request.username.clone();
+                let login_log_service = state.login_log_service.clone();
+                // 异步记录日志，不阻塞登录响应
+                tokio::spawn(async move {
+                    if let Err(e) = login_log_service.create(&username, &ip).await {
+                        tracing::error!("Failed to log login: {}", e);
+                    }
+                });
+            }
+            Ok(Json(response))
+        }
         Err(e) => Err((StatusCode::UNAUTHORIZED, e.to_string())),
     }
 }
@@ -68,6 +85,7 @@ pub async fn login(
 /// 第二步登录：验证TOTP码
 pub async fn verify_totp(
     State(state): State<Arc<AppState>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<TotpVerifyRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // 验证session token
@@ -81,7 +99,18 @@ pub async fn verify_totp(
         Ok(true) => {
             // 生成JWT token
             match state.auth_service.login_step_two(&username) {
-                Ok(response) => Ok(Json(response)),
+                Ok(response) => {
+                    // 异步记录登录日志，不阻塞登录响应
+                    let ip = addr.ip().to_string();
+                    let username_clone = username.clone();
+                    let login_log_service = state.login_log_service.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = login_log_service.create(&username_clone, &ip).await {
+                            tracing::error!("Failed to log login: {}", e);
+                        }
+                    });
+                    Ok(Json(response))
+                }
                 Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
             }
         }

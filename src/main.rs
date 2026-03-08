@@ -9,7 +9,7 @@ use anyhow::Result;
 use api::AppState;
 use models::db::init_db;
 use scheduler::{Scheduler, SubscriptionScheduler, BackupScheduler};
-use services::{AuthService, ConfigService, DependenceService, EnvService, Executor, LogService, ScriptService, SubscriptionService, SystemLogCollector, TaskService, TaskGroupService, TotpService, UserService};
+use services::{AuthService, ConfigService, DependenceService, EnvService, Executor, LogService, LoginLogService, ScriptService, SubscriptionService, SystemLogCollector, TaskService, TaskGroupService, TotpService, UserService};
 
 #[cfg(not(target_os = "android"))]
 use services::TerminalService;
@@ -103,6 +103,7 @@ async fn main() -> Result<()> {
     // 初始化服务
     let task_service = Arc::new(TaskService::new(shared_pool.clone()));
     let log_service = Arc::new(LogService::new(shared_pool.clone()));
+    let login_log_service = Arc::new(LoginLogService::new(shared_pool.clone()));
     let env_service = Arc::new(EnvService::new(shared_pool.clone()));
     let script_service = Arc::new(ScriptService::new(scripts_dir.clone(), env_service.clone()));
     let dependence_service = Arc::new(DependenceService::new(shared_pool.clone()));
@@ -158,6 +159,7 @@ async fn main() -> Result<()> {
     // 启动日志清理定时任务
     info!("Starting log cleanup task...");
     let log_service_cleanup = log_service.clone();
+    let login_log_service_cleanup = login_log_service.clone();
     let config_service_cleanup = config_service.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(86400)); // 每24小时
@@ -170,10 +172,18 @@ async fn main() -> Result<()> {
                 _ => 30, // 默认30天
             };
 
+            // 清理执行日志
             info!("Running log cleanup, retention days: {}", retention_days);
             match log_service_cleanup.delete_old_logs(retention_days).await {
                 Ok(count) => info!("Deleted {} old log entries", count),
                 Err(e) => error!("Failed to delete old logs: {}", e),
+            }
+
+            // 清理登录日志
+            info!("Running login log cleanup, retention days: {}", retention_days);
+            match login_log_service_cleanup.delete_old_logs(retention_days).await {
+                Ok(count) => info!("Deleted {} old login log entries", count),
+                Err(e) => error!("Failed to delete old login logs: {}", e),
             }
         }
     });
@@ -190,6 +200,7 @@ async fn main() -> Result<()> {
         config_service,
         auth_service,
         user_service,
+        login_log_service,
         #[cfg(not(target_os = "android"))]
         terminal_service,
         totp_service,
@@ -258,7 +269,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>()
+    ).await?;
 
     Ok(())
 }

@@ -13,12 +13,15 @@ import {
   Tabs,
   Grid,
   Switch,
+  Table,
 } from '@arco-design/web-react';
-import { IconSave, IconDownload, IconUpload } from '@arco-design/web-react/icon';
+import { IconSave, IconDownload, IconUpload, IconRefresh } from '@arco-design/web-react/icon';
 import axios from 'axios';
 import TotpSettings from '@/components/TotpSettings';
 import { getSystemLogs, type SystemLogEntry } from '@/api/systemLog';
 import { authApi } from '@/api/auth';
+import { loginLogApi, type LoginLog } from '@/api/loginLog';
+import dayjs from 'dayjs';
 
 const FormItem = Form.Item;
 const { Title, Text } = Typography;
@@ -66,6 +69,22 @@ const Config: React.FC = () => {
   const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
   const [systemLogsLoading, setSystemLogsLoading] = useState(false);
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+  const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
+  const [loginLogsLoading, setLoginLogsLoading] = useState(false);
+  const [loginLogsPagination, setLoginLogsPagination] = useState({
+    current: 1,
+    pageSize: 20,
+    total: 0,
+  });
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadConfig();
@@ -97,7 +116,10 @@ const Config: React.FC = () => {
         eventSource.close();
       };
     }
-  }, [activeTab]);
+    if (activeTab === 'login-logs') {
+      loadLoginLogs();
+    }
+  }, [activeTab, loginLogsPagination.current, loginLogsPagination.pageSize]);
 
   useEffect(() => {
     if (systemInfo && activeTab === 'system') {
@@ -248,6 +270,22 @@ const Config: React.FC = () => {
       Message.error('加载系统日志失败');
     } finally {
       setSystemLogsLoading(false);
+    }
+  };
+
+  const loadLoginLogs = async () => {
+    try {
+      setLoginLogsLoading(true);
+      const response = await loginLogApi.list(loginLogsPagination.current, loginLogsPagination.pageSize);
+      setLoginLogs(response.data);
+      setLoginLogsPagination({
+        ...loginLogsPagination,
+        total: response.total,
+      });
+    } catch (error: any) {
+      Message.error('加载登录日志失败');
+    } finally {
+      setLoginLogsLoading(false);
     }
   };
 
@@ -942,6 +980,61 @@ const Config: React.FC = () => {
                   )}
                 </Space>
               </Spin>
+            </div>
+          </TabPane>
+
+          <TabPane key="login-logs" title="登录日志">
+            <div style={{ padding: '16px 24px' }}>
+              <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Title heading={6} style={{ margin: 0 }}>登录日志</Title>
+                  <Button
+                    icon={<IconRefresh />}
+                    onClick={loadLoginLogs}
+                  >
+                    刷新
+                  </Button>
+                </div>
+                <Table
+                  loading={loginLogsLoading}
+                  columns={[
+                    {
+                      title: 'ID',
+                      dataIndex: 'id',
+                      width: 80,
+                    },
+                    {
+                      title: '用户名',
+                      dataIndex: 'username',
+                      width: 150,
+                    },
+                    {
+                      title: 'IP地址',
+                      dataIndex: 'ip_address',
+                      width: 180,
+                    },
+                    {
+                      title: '登录时间',
+                      dataIndex: 'created_at',
+                      width: 200,
+                      render: (created_at: string) => dayjs(created_at).format('YYYY-MM-DD HH:mm:ss'),
+                    },
+                  ]}
+                  data={loginLogs}
+                  scroll={{ x: 600 }}
+                  pagination={{
+                    ...loginLogsPagination,
+                    onChange: (current, pageSize) => {
+                      setLoginLogsPagination({ ...loginLogsPagination, current, pageSize });
+                    },
+                    showTotal: true,
+                    sizeCanChange: !isMobile,
+                    pageSizeChangeResetCurrent: true,
+                    simple: isMobile,
+                  }}
+                  rowKey="id"
+                />
+              </Space>
             </div>
           </TabPane>
 
